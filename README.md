@@ -126,11 +126,82 @@ This project provides a containerized Xray server using the VLESS protocol over 
             # Optional: Mount logs externally if desired
             # - ./logs:/var/log/xray
         ```
-2.  **Configure Firewall:** Ensure your server's firewall (e.g., Google Cloud VPC firewall) allows **ingress TCP traffic on port 443**.
+2.  **Configure Firewall:** Ensure your server's firewall (e.g., Google Cloud VPC firewall) allows **ingress TCP traffic on port 443** (for VLESS/TLS) **and port 8080** (for the health check).
 3.  **Run the Container:** Navigate to the directory containing your modified `docker-compose.yml` and the `server` subdirectory, then run:
     ```bash
     docker compose up -d
     ```
+
+## Deployment to Container-Optimized OS (COS) with Startup Script
+
+This method uses Google Secret Manager and a COS startup script for a more automated deployment.
+
+### Prerequisites for COS Deployment
+
+- Google Cloud SDK (`gcloud`) installed and configured locally.
+- Permissions to create VM instances, firewall rules, and access/create Secrets in Google Secret Manager.
+- Your Xray Docker image pushed to GHCR (see previous steps).
+
+### 1. Store Secrets in Google Secret Manager
+
+Store your VLESS UUID, TLS certificate, and private key securely:
+
+```bash
+# Store VLESS UUID (Replace YOUR_UNIQUE_UUID)
+echo -n "YOUR_UNIQUE_UUID" | gcloud secrets create xray-vless-uuid --data-file=- --project=YOUR_PROJECT_ID --replication-policy=automatic
+
+# Store TLS Certificate (Replace path/to/your/fullchain.pem)
+gcloud secrets create xray-tls-cert --data-file=path/to/your/fullchain.pem --project=YOUR_PROJECT_ID --replication-policy=automatic
+
+# Store TLS Private Key (Replace path/to/your/privkey.pem)
+gcloud secrets create xray-tls-key --data-file=path/to/your/privkey.pem --project=YOUR_PROJECT_ID --replication-policy=automatic
+```
+*Remember the secret names (`xray-vless-uuid`, `xray-tls-cert`, `xray-tls-key`).*
+
+### 2. Create `startup.sh` Script
+
+Create a file named `startup.sh` locally. Copy the content from the script provided in the conversation [Link to previous message or paste script here - **NOTE:** Need to reference the script provided above].
+
+**Important:** Edit the `startup.sh` file and replace the placeholder values for `PROJECT_ID` and `XRAY_IMAGE` with your actual Google Cloud Project ID and the full path to your image on GHCR.
+
+### 3. Launch COS Instance
+
+Run the following `gcloud` command, replacing placeholders:
+
+```bash
+gcloud compute instances create xray-cos-instance \
+  --project=YOUR_PROJECT_ID \
+  --zone=YOUR_ZONE \
+  --image-family=cos-stable \
+  --image-project=cos-cloud \
+  --machine-type=e2-micro `# Or your desired machine type` \
+  --scopes=https://www.googleapis.com/auth/cloud-platform `# Grants API access` \
+  --metadata-from-file=startup-script=startup.sh `# Attaches the script` \
+  --tags=https-server `# Network tag for firewall`
+```
+*Ensure the VM's service account has the `Secret Manager Secret Accessor` IAM role.*
+
+### 4. Create Firewall Rule
+
+Allow incoming traffic on port 443 (for VLESS/TLS) and port 8080 (for the health check):
+
+```bash
+gcloud compute firewall-rules create allow-xray-multiport \
+  --network=default \
+  --allow=tcp:443,tcp:8080 \
+  --source-ranges=0.0.0.0/0 \
+  --target-tags=https-server `# Or the tag used on your COS instance` \
+  --project=YOUR_PROJECT_ID
+```
+
+### 5. Connecting
+
+Once the instance boots and the startup script completes (check logs via Google Cloud Console -> VM Instances -> Serial port 1 (Console)), you can connect using your Xray client as described in the **Usage** section, pointing to the new instance's public IP address or associated domain name.
+
+### COS Maintenance Notes
+
+- **Configuration Changes:** To change the UUID or other `config.json` settings, update the Secret in Secret Manager and restart the `xray-server` Docker container on the COS instance (e.g., via `docker restart xray-server` if you SSH in) or recreate the VM instance.
+- **Certificate Renewal:** Automatic renewal is complex. You'll likely need to manually renew certs, update the `xray-tls-cert` and `xray-tls-key` secrets, and then restart the container or instance.
 
 ## Usage
 
@@ -203,6 +274,20 @@ Certificates typically last 90 days. Set up automatic renewal using `certbot ren
 # On the server, in the directory with docker-compose.yml
 docker compose logs -f xray
 ```
+
+### Health Check
+
+A simple TCP health check endpoint is available on port `8080` of the host machine (mapped to port `80` in the container). You can test this with `curl` or `telnet`:
+
+```bash
+# Should connect successfully if the container is running
+curl http://YOUR_SERVER_IP_OR_DOMAIN:8080
+
+# Or using telnet
+telnet YOUR_SERVER_IP_OR_DOMAIN 8080 
+# (Press Ctrl+] then type 'quit' to exit telnet after connection)
+```
+This endpoint is suitable for basic health checks from load balancers or monitoring systems.
 
 ## Security Considerations
 

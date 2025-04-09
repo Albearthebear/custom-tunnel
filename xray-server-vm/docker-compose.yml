@@ -6,6 +6,7 @@ services:
     restart: always
     ports:
       - "443:8000"
+      - "8080:80"
     volumes:
       - ./server/certs:/app/certs
       - ./server/config.json:/app/config.json

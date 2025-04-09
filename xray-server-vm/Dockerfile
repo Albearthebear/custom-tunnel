@@ -29,9 +29,10 @@ RUN chown -R xray:xray /app /var/log/xray
 # Use non-root user
 USER xray
 
-# Expose ports for the service
+# Expose the internal port Xray listens on (VLESS)
 EXPOSE 8000
-# EXPOSE 8001
+# Expose the internal port for health checks
+EXPOSE 80
 
 # Run xray
 CMD ["xray", "run", "-config", "/app/config.json"] 

@@ -11,7 +11,7 @@
       "settings": {
         "clients": [
           {
-            "id": "de04add9-5c68-8bab-950c-08cd5320df18", 
+            "id": "de04add9-5c68-8bab-950c-08cd5320df18",
             "level": 0
           }
         ],
@@ -35,6 +35,17 @@
           "tcpNoDelay": true
         }
       }
+    },
+    {
+      "port": 80,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 1,
+        "network": "tcp"
+      },
+      "tag": "health",
+      "listen": "0.0.0.0"
     }
   ],
   "outbounds": [
@@ -42,10 +53,21 @@
       "protocol": "freedom",
       "settings": {},
       "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "block"
     }
   ],
   "routing": {
-    "rules": [],
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["health"],
+        "outboundTag": "block"
+      }
+    ],
     "domainStrategy": "AsIs"
   }
 } 
