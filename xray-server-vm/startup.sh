@@ -85,19 +85,39 @@ cat << EOF > "${CONFIG_FILE}"
           "tcpNoDelay": true
         }
       }
+    },
+    {
+      "port": 80,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 1,
+        "network": "tcp"
+      },
+      "tag": "health",
+      "listen": "0.0.0.0"
     }
-    // Add health check inbound here if needed (mapped via -p 8080:80 in docker run)
-    // Remember to also add blackhole outbound and routing rule if adding health check
   ],
   "outbounds": [
     {
       "protocol": "freedom",
       "settings": {},
       "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "block"
     }
   ],
   "routing": {
-    "rules": [],
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["health"],
+        "outboundTag": "block"
+      }
+    ],
     "domainStrategy": "AsIs"
   }
 }
@@ -123,7 +143,7 @@ echo "Checking for existing container..."
 docker stop xray-server || true
 docker rm xray-server || true
 
-# Run the container
+# Run the container (single line version) with health check port
 echo "Starting Xray container..."
 docker run -d --name xray-server --restart always -p 443:8000 -p 8080:80 -v "${HOST_LE_CERTS_DIR}:${CONTAINER_CERT_DIR}:ro" -v "${CONFIG_FILE}:${CONTAINER_CONFIG_FILE}:ro" -v "${HOST_LOG_DIR}:${CONTAINER_LOG_DIR}" "${XRAY_IMAGE}"
 
