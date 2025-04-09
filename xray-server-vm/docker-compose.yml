@@ -5,18 +5,19 @@ services:
     build: .
     restart: always
     ports:
-      - "8000:8000"
-      - "8001:8001"
+      - "443:8000"
     volumes:
       - ./server/certs:/app/certs
-    network_mode: "host"
-    cap_add:
-      - NET_ADMIN
-    sysctls:
-      - net.ipv4.tcp_fastopen=3
-      - net.ipv4.tcp_fin_timeout=30
-      - net.ipv4.tcp_keepalive_time=300
-      - net.ipv4.tcp_keepalive_probes=5
-      - net.ipv4.tcp_keepalive_intvl=15
-      - net.core.somaxconn=4096
-      - net.ipv4.tcp_max_syn_backlog=8192 
+      - ./server/config.json:/app/config.json
+    # network_mode: "host"
+    # cap_add:
+    #   - NET_ADMIN
+    # sysctls are generally not needed without host networking and specific kernel requirements
+    # sysctls:
+    #   - net.ipv4.tcp_fastopen=3
+    #   - net.ipv4.tcp_fin_timeout=30
+    #   - net.ipv4.tcp_keepalive_time=300
+    #   - net.ipv4.tcp_keepalive_probes=5
+    #   - net.ipv4.tcp_keepalive_intvl=15
+    #   - net.core.somaxconn=4096
+    #   - net.ipv4.tcp_max_syn_backlog=8192 

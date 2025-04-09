@@ -11,7 +11,7 @@
       "settings": {
         "clients": [
           {
-            "id": "de04add9-5c68-8bab-950c-08cd5320df18",
+            "id": "de04add9-5c68-8bab-950c-08cd5320df18", 
             "level": 0
           }
         ],
@@ -35,17 +35,6 @@
           "tcpNoDelay": true
         }
       }
-    },
-    {
-      "port": 8001,
-      "protocol": "dokodemo-door",
-      "settings": {
-        "address": "127.0.0.1",
-        "port": 8000,
-        "network": "tcp"
-      },
-      "tag": "api",
-      "listen": "127.0.0.1"
     }
   ],
   "outbounds": [
@@ -56,13 +45,7 @@
     }
   ],
   "routing": {
-    "rules": [
-      {
-        "type": "field",
-        "inboundTag": ["api"],
-        "outboundTag": "api"
-      }
-    ],
+    "rules": [],
     "domainStrategy": "AsIs"
   }
 } 
