@@ -28,12 +28,6 @@ echo "Creating directories..."
 mkdir -p "${CONFIG_DIR}"
 mkdir -p "${HOST_LOG_DIR}"
 
-# Ensure gcloud is available
-if ! command -v gcloud &> /dev/null; then
-    echo "ERROR: gcloud command could not be found. Exiting."
-    exit 1
-fi
-
 # Check if certificates exist locally
 if [ ! -f "${HOST_LE_CERTS_DIR}/fullchain.pem" ] || [ ! -f "${HOST_LE_CERTS_DIR}/privkey.pem" ]; then
     echo "ERROR: Let's Encrypt certificates not found at ${HOST_LE_CERTS_DIR}/"
@@ -44,7 +38,7 @@ echo "Local certificates found."
 
 # Fetch UUID secret from Secret Manager
 echo "Fetching VLESS UUID from Secret Manager..."
-VLESS_UUID=$(gcloud secrets versions access latest --secret="${UUID_SECRET_NAME}" --project="${PROJECT_ID}")
+VLESS_UUID=$(/usr/bin/gcloud secrets versions access latest --secret="${UUID_SECRET_NAME}" --project="${PROJECT_ID}")
 if [ $? -ne 0 ] || [ -z "${VLESS_UUID}" ]; then
  echo "ERROR: Failed to fetch UUID secret ${UUID_SECRET_NAME}. Ensure it exists and the VM has permissions."
  exit 1
@@ -131,13 +125,7 @@ docker rm xray-server || true
 
 # Run the container
 echo "Starting Xray container..."
-docker run -d --name xray-server --restart always \
-  -p 443:8000 \
-  # Add -p 8080:80 here if you included the health check inbound in config.json
-  -v "${HOST_LE_CERTS_DIR}:${CONTAINER_CERT_DIR}:ro" \
-  -v "${CONFIG_FILE}:${CONTAINER_CONFIG_FILE}:ro" \
-  -v "${HOST_LOG_DIR}:${CONTAINER_LOG_DIR}" \
-  "${XRAY_IMAGE}"
+docker run -d --name xray-server --restart always -p 443:8000 -p 8080:80 -v "${HOST_LE_CERTS_DIR}:${CONTAINER_CERT_DIR}:ro" -v "${CONFIG_FILE}:${CONTAINER_CONFIG_FILE}:ro" -v "${HOST_LOG_DIR}:${CONTAINER_LOG_DIR}" "${XRAY_IMAGE}"
 
 if [ $? -ne 0 ]; then
  echo "ERROR: Failed to start container ${XRAY_IMAGE}"
