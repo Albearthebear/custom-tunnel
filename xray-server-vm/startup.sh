@@ -36,14 +36,31 @@ if [ ! -f "${HOST_LE_CERTS_DIR}/fullchain.pem" ] || [ ! -f "${HOST_LE_CERTS_DIR}
 fi
 echo "Local certificates found."
 
-# Fetch UUID secret from Secret Manager
-echo "Fetching VLESS UUID from Secret Manager..."
-VLESS_UUID=$(/usr/bin/gcloud secrets versions access latest --secret="${UUID_SECRET_NAME}" --project="${PROJECT_ID}")
-if [ $? -ne 0 ] || [ -z "${VLESS_UUID}" ]; then
- echo "ERROR: Failed to fetch UUID secret ${UUID_SECRET_NAME}. Ensure it exists and the VM has permissions."
+# Metadata key for the UUID
+UUID_METADATA_KEY="xray-uuid" # Key we will set via gcloud command
+
+# Fetch UUID from instance metadata
+echo "Fetching VLESS UUID from metadata key '${UUID_METADATA_KEY}'..."
+# Use curl to query the metadata server
+# Adding retries in case metadata server isn't ready immediately
+RETRY_COUNT=0
+MAX_RETRIES=5
+SLEEP_TIME=2
+VLESS_UUID=""
+while [ -z "$VLESS_UUID" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  VLESS_UUID=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/${UUID_METADATA_KEY}" -H "Metadata-Flavor: Google")
+  if [ -z "$VLESS_UUID" ]; then
+    echo "Metadata key not found or empty, retrying (${RETRY_COUNT}/${MAX_RETRIES})..."
+    sleep $SLEEP_TIME
+    RETRY_COUNT=$((RETRY_COUNT+1))
+  fi
+done
+
+if [ -z "$VLESS_UUID" ]; then
+ echo "ERROR: Failed to fetch UUID from metadata key '${UUID_METADATA_KEY}' after ${MAX_RETRIES} retries."
  exit 1
 fi
-echo "UUID fetched successfully."
+echo "UUID fetched successfully from metadata."
 
 # Generate config.json dynamically
 echo "Generating ${CONFIG_FILE}..."
