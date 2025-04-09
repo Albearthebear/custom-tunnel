@@ -4,9 +4,9 @@
 # Secret name in Google Secret Manager for the UUID
 UUID_SECRET_NAME="xray-vless-uuid"
 # Google Cloud Project ID (Replace!)
-PROJECT_ID="YOUR_PROJECT_ID"
+PROJECT_ID="green-hell-450120"
 # Your container image on GHCR (Replace!)
-XRAY_IMAGE="ghcr.io/YOUR_GITHUB_USERNAME/xray-server:latest" # e.g., ghcr.io/albear/xray-server:latest
+XRAY_IMAGE="ghcr.io/albearthebear/xray-server:latest" # e.g., ghcr.io/albear/xray-server:latest
 # Your domain name (Replace!)
 DOMAIN_NAME="prostoy-fitnes.xyz"
 
